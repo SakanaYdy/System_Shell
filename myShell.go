@@ -43,7 +43,7 @@ func testApi(input string) {
 
 	//fmt.Print(">")
 
-	apiKey := "sk-5806dc5ecf1b4438bc35629dacbf0553"
+	apiKey := "apiKey"
 
 	client := api.NewTongYiClient(apiKey)
 
