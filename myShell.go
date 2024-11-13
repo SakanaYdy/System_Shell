@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/eiannone/keyboard"
 	"log"
 	"os"
 	"os/exec"
@@ -76,8 +77,30 @@ func testApi(input string) {
 
 func main() {
 
+	Queue := api.Queue{}
+	recordQueue := Queue.Init()
+
 	reader := bufio.NewReader(os.Stdin)
+
+	keysEvents, err := keyboard.GetKeys(10)
+	var commandSlice []string
+	commandIndex := 0
+
+	if err != nil {
+		fmt.Println("keyboard error")
+	}
+
 	for {
+
+		event := <-keysEvents
+		if event.Key == keyboard.KeyArrowUp {
+			commamd := api.GetCommand(&commandIndex, commandSlice, true)
+			fmt.Println("click up" + " " + commamd)
+		} else if event.Key == keyboard.KeyArrowDown {
+			commamd := api.GetCommand(&commandIndex, commandSlice, false)
+			fmt.Println("click down" + " " + commamd)
+		}
+
 		dir, err2 := os.Getwd()
 		if err2 != nil {
 			fmt.Println("文件目录获取失败")
@@ -86,6 +109,12 @@ func main() {
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
+		}
+
+		api.SaveCommand(input, &commandSlice)
+
+		if recordQueue.GetSize() == 3 {
+			recordQueue.Show()
 		}
 
 		//  如果用户指令无法识别，调用AI接口修正
