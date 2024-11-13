@@ -78,7 +78,11 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print("> ")
+		dir, err2 := os.Getwd()
+		if err2 != nil {
+			fmt.Println("文件目录获取失败")
+		}
+		fmt.Print(dir + "> ")
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
