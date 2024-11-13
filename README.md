@@ -3,7 +3,10 @@
 
 ## 环境需要
 
-```
+```shell
+// 切换CN镜像源
+go env -w GOPROXY=https://goproxy.cn,direct
+
 go get github.com/eiannone/keyboard
 ```
 

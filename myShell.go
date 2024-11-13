@@ -30,7 +30,6 @@ func execInput(input string) error {
 
 	}
 
-	// Pass the program and the arguments separately.
 	cmd := exec.Command(args[0], args[1:]...)
 
 	cmd.Stderr = os.Stderr
@@ -71,13 +70,33 @@ func testApi(input string) {
 	}
 }
 
-// 清空当前行并打印新的命令
-func clearAndPrintCommand(commamd, dir string) {
+//func clearAndPrintCommand(commamd, dir string) {
+//
+//
+//
+//	// 将光标移动到行首并清空当前命令
+//	fmt.Print("\r")                      // 回车符：移动到行首
+//	fmt.Print("                       ") // 打印空格覆盖当前行，确保清除原来的命令
+//	fmt.Print("\r")                      // 再次回到行首
+//	fmt.Print(dir + "> " + commamd)      // 打印新的命令
+//
+//	// 如果命令有空格，要确保空格能正确显示
+//}
+
+func clearAndPrintCommand(commamd string) {
+
+	dir, err2 := os.Getwd()
+	if err2 != nil {
+		fmt.Println("文件目录获取失败")
+	}
+
 	// 将光标移动到行首并清空当前命令
-	fmt.Print("\r")                 // 回车符：移动到行首
-	fmt.Print("                ")   // 打印空格覆盖当前行，确保清除原来的命令
-	fmt.Print("\r")                 // 再次回到行首
-	fmt.Print(dir + "> " + commamd) // 打印新的命令
+	fmt.Print("\r")                                                                                                         // 回车符：移动到行首
+	fmt.Print("                                                                                                          ") // 打印空格覆盖当前行，确保清除原来的命令
+	fmt.Print("\r")                                                                                                         // 再次回到行首
+	fmt.Print(dir + "> " + commamd)                                                                                         // 打印新的命令
+
+	// 如果命令有空格，要确保空格能正确显示
 }
 
 func main() {
@@ -107,12 +126,10 @@ func main() {
 	fmt.Print(dir + "> ")
 	for {
 		// 获取当前工作目录
-		dir, err2 := os.Getwd()
+		dir, err2 = os.Getwd()
 		if err2 != nil {
 			fmt.Println("文件目录获取失败")
-			return
 		}
-
 		// 获取键盘事件
 		event := <-keysEvents
 
@@ -121,51 +138,56 @@ func main() {
 		case event.Key == keyboard.KeyArrowUp:
 			// 上箭头，获取上一个命令
 			commamd = api.GetCommand(&commandIndex, commandSlice, true)
-			clearAndPrintCommand(commamd, dir)
+			//clearAndPrintCommand(commamd, dir)
+			clearAndPrintCommand(commamd)
 
 		case event.Key == keyboard.KeyArrowDown:
 			// 下箭头，获取下一个命令
 			commamd = api.GetCommand(&commandIndex, commandSlice, false)
-			clearAndPrintCommand(commamd, dir)
+			//clearAndPrintCommand(commamd, dir)
+			clearAndPrintCommand(commamd)
 
-		case "A" <= string(event.Rune) && string(event.Rune) <= "z":
-			// 拼接字母或数字到命令
+		// 处理可打印字符：字母、数字、符号等
+		case event.Rune >= 32 && event.Rune <= 126:
+			// 拼接字母、数字、符号到命令
 			commamd = commamd + string(event.Rune)
-			clearAndPrintCommand(commamd, dir) // 清空并重新打印当前命令
-
+			//clearAndPrintCommand(commamd, dir) // 清空并重新打印当前命令
+			clearAndPrintCommand(commamd)
+		// 处理空格
+		case event.Key == keyboard.KeySpace:
+			commamd = commamd + " " // 添加空格
+			//clearAndPrintCommand(commamd, dir)
+			clearAndPrintCommand(commamd)
+		// 处理回车键，执行命令
 		case event.Key == keyboard.KeyEnter:
-			// 回车键，执行命令
-			fmt.Println()
-			//fmt.Println(commamd)
+			fmt.Println() // 打印换行符
 			if commamd != "" {
 				// 保存命令到历史
 				api.SaveCommand(commamd, &commandSlice)
 				commandIndex = len(commandSlice) // 更新命令索引
 			}
 			if err := execInput(commamd); err != nil {
-				testApi(commamd)
+				fmt.Println(err)
+				//testApi(commamd)
 			}
 			commamd = "" // 清空当前命令
-			fmt.Print(dir + "> ")
+			//fmt.Print(dir + "> ")
+			//clearAndPrintCommand(commamd, dir)
+			clearAndPrintCommand(commamd)
+		// 处理 Backspace 键，删除命令中的最后一个字符
+		case event.Key == keyboard.KeyBackspace:
+			if len(commamd) > 0 {
+				// 删除最后一个字符
+				fmt.Println()
+				fmt.Println("删除前:" + commamd)
+				commamd = commamd[:len(commamd)-1]
+				fmt.Println("删除后:" + commamd)
+			}
+			clearAndPrintCommand(commamd) // 重新打印当前命令
 
-			//	input, err := reader.ReadString('\n')
-			//	if err != nil {
-			//		fmt.Fprintln(os.Stderr, err)
-			//	}
-			//
-			//	api.SaveCommand(input, &commandSlice)
-			//
-			//	if recordQueue.GetSize() == 3 {
-			//		recordQueue.Show()
-			//	}
-			//
-			//	//  如果用户指令无法识别，调用AI接口修正
-			//	if err = execInput(input); err != nil {
-			//		//testApi()
-			//		testApi(input)
-			//		//fmt.Fprintln(os.Stderr, err)
-			//	}
-			//}
+		}
+		if event.Key == keyboard.KeyEsc {
+			break
 		}
 	}
 }
