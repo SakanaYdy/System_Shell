@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -42,7 +41,7 @@ func execInput(input string) error {
 
 func testApi(input string) {
 
-	fmt.Print(">")
+	//fmt.Print(">")
 
 	apiKey := "sk-5806dc5ecf1b4438bc35629dacbf0553"
 
@@ -65,9 +64,6 @@ func testApi(input string) {
 	}
 
 	ans := resp.Output.Text
-	// 输出生成的文本内容
-	//fmt.Println("生成的文本:")
-	//fmt.Println(ans) // 假设 TongYiRsp 结构体已经处理了响应数据的提取
 	err = execInput(ans[1 : len(ans)-1])
 	if err != nil {
 		fmt.Println(err)
@@ -75,12 +71,21 @@ func testApi(input string) {
 	}
 }
 
+// 清空当前行并打印新的命令
+func clearAndPrintCommand(commamd, dir string) {
+	// 将光标移动到行首并清空当前命令
+	fmt.Print("\r")                 // 回车符：移动到行首
+	fmt.Print("                ")   // 打印空格覆盖当前行，确保清除原来的命令
+	fmt.Print("\r")                 // 再次回到行首
+	fmt.Print(dir + "> " + commamd) // 打印新的命令
+}
+
 func main() {
 
-	Queue := api.Queue{}
-	recordQueue := Queue.Init()
-
-	reader := bufio.NewReader(os.Stdin)
+	//Queue := api.Queue{}
+	//recordQueue := Queue.Init()
+	//
+	//reader := bufio.NewReader(os.Stdin)
 
 	keysEvents, err := keyboard.GetKeys(10)
 	var commandSlice []string
@@ -90,38 +95,77 @@ func main() {
 		fmt.Println("keyboard error")
 	}
 
+	defer func() {
+		_ = keyboard.Close()
+	}()
+
+	var commamd string
+	dir, err2 := os.Getwd()
+	if err2 != nil {
+		fmt.Println("文件目录获取失败")
+	}
+	fmt.Print(dir + "> ")
 	for {
-
-		event := <-keysEvents
-		if event.Key == keyboard.KeyArrowUp {
-			commamd := api.GetCommand(&commandIndex, commandSlice, true)
-			fmt.Println("click up" + " " + commamd)
-		} else if event.Key == keyboard.KeyArrowDown {
-			commamd := api.GetCommand(&commandIndex, commandSlice, false)
-			fmt.Println("click down" + " " + commamd)
-		}
-
+		// 获取当前工作目录
 		dir, err2 := os.Getwd()
 		if err2 != nil {
 			fmt.Println("文件目录获取失败")
-		}
-		fmt.Print(dir + "> ")
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			return
 		}
 
-		api.SaveCommand(input, &commandSlice)
+		// 获取键盘事件
+		event := <-keysEvents
 
-		if recordQueue.GetSize() == 3 {
-			recordQueue.Show()
-		}
+		// 处理按键事件
+		switch {
+		case event.Key == keyboard.KeyArrowUp:
+			// 上箭头，获取上一个命令
+			commamd = api.GetCommand(&commandIndex, commandSlice, true)
+			clearAndPrintCommand(commamd, dir)
 
-		//  如果用户指令无法识别，调用AI接口修正
-		if err = execInput(input); err != nil {
-			//testApi()
-			testApi(input)
-			//fmt.Fprintln(os.Stderr, err)
+		case event.Key == keyboard.KeyArrowDown:
+			// 下箭头，获取下一个命令
+			commamd = api.GetCommand(&commandIndex, commandSlice, false)
+			clearAndPrintCommand(commamd, dir)
+
+		case "A" <= string(event.Rune) && string(event.Rune) <= "z":
+			// 拼接字母或数字到命令
+			commamd = commamd + string(event.Rune)
+			clearAndPrintCommand(commamd, dir) // 清空并重新打印当前命令
+
+		case event.Key == keyboard.KeyEnter:
+			// 回车键，执行命令
+			fmt.Println()
+			//fmt.Println(commamd)
+			if commamd != "" {
+				// 保存命令到历史
+				api.SaveCommand(commamd, &commandSlice)
+				commandIndex = len(commandSlice) // 更新命令索引
+			}
+			if err := execInput(commamd); err != nil {
+				testApi(commamd)
+			}
+			commamd = "" // 清空当前命令
+			fmt.Print(dir + "> ")
+
+			//	input, err := reader.ReadString('\n')
+			//	if err != nil {
+			//		fmt.Fprintln(os.Stderr, err)
+			//	}
+			//
+			//	api.SaveCommand(input, &commandSlice)
+			//
+			//	if recordQueue.GetSize() == 3 {
+			//		recordQueue.Show()
+			//	}
+			//
+			//	//  如果用户指令无法识别，调用AI接口修正
+			//	if err = execInput(input); err != nil {
+			//		//testApi()
+			//		testApi(input)
+			//		//fmt.Fprintln(os.Stderr, err)
+			//	}
+			//}
 		}
 	}
 }
